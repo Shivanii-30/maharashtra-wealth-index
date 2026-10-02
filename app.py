@@ -1,56 +1,57 @@
 import streamlit as st
 import pandas as pd
-import json
-import plotly.graph_objects as go
+import geopandas as gpd
+import folium
+import streamlit.components.v1 as components
 
 st.set_page_config(
-    page_title="Maharashtra District-wise Wealth Index",
+    page_title="Maharashtra Wealth Index",
     layout="wide"
 )
 
 st.title("Maharashtra District-wise Wealth Index")
 
-# 1. READ EXCEL
+# Load ranking data
 df = pd.read_excel(
     "Wealth Index Finall..xlsx",
     sheet_name="ranking "
 )
 
-df = df[["District", "wealth_score", "rank"]]
-
-df["rank"] = pd.to_numeric(
-    df["rank"], errors="coerce"
+# Load map
+gdf = gpd.read_file(
+    "Maharashtra_Wealth_Index.geojson"
 )
 
-# 2. DISTRICT NAME CORRECTION
-new_names = {
-    "Ahmednagar": "Ahilyanagar",
-    "Aurangabad": "Chhatrapati Sambhajinagar",
-    "Osmanabad": "Dharashiv"
-}
+# Keep required columns
+gdf = gdf[["District", "geometry"]]
 
-df["District"] = df["District"].replace(new_names)
+# Merge ranking data
+map_data = gdf.merge(
+    df[["District", "wealth_score", "rank"]],
+    on="District",
+    how="left"
+)
 
-# 3. READ GEOJSON
-with open(
-    "Maharashtra_Wealth_Index.geojson",
-    "r",
-    encoding="utf-8"
-) as f:
-    geojson = json.load(f)
+# Create Maharashtra map
+m = folium.Map(
+    location=[19.75, 75.7],
+    zoom_start=6,
+    tiles="OpenStreetMap",
+    min_zoom=6,
+    max_zoom=9
+)
 
-# Correct GeoJSON district names
-for feature in geojson["features"]:
-    name = feature["properties"].get("District")
+# Fit map to Maharashtra
+minx, miny, maxx, maxy = gdf.total_bounds
 
-    if name in new_names:
-        feature["properties"]["District"] = new_names[name]
+m.fit_bounds([
+    [miny, minx],
+    [maxy, maxx]
+])
 
-# 4. RANK COLOUR
+# Rank colours
 def get_color(rank):
-    if pd.isna(rank):
-        return "#D3D3D3"
-    elif rank <= 7:
+    if rank <= 7:
         return "#006400"
     elif rank <= 14:
         return "#32CD32"
@@ -61,144 +62,98 @@ def get_color(rank):
     else:
         return "#DC143C"
 
-# 5. CREATE MAP
-fig = go.Figure()
+# Add districts
+folium.GeoJson(
+    map_data,
+    style_function=lambda feature: {
+        "fillColor": get_color(
+            feature["properties"]["rank"]
+        ),
+        "color": "black",
+        "weight": 1,
+        "fillOpacity": 0.7
+    },
+    popup=folium.GeoJsonPopup(
+        fields=[
+            "District",
+            "wealth_score",
+            "rank"
+        ],
+        aliases=[
+            "District Name",
+            "Wealth Score",
+            "Rank"
+        ],
+        localize=True,
+        labels=True
+    )
+).add_to(m)
 
-# Add each district separately
-for feature in geojson["features"]:
+# District names
+for _, row in map_data.iterrows():
 
-    district = feature["properties"].get("District")
+    centroid = row.geometry.centroid
 
-    row = df[df["District"] == district]
-
-    if row.empty:
-        continue
-
-    rank = row.iloc[0]["rank"]
-    score = row.iloc[0]["wealth_score"]
-
-    color = get_color(rank)
-
-    geometry = feature["geometry"]
-
-    def add_polygon(coords):
-
-        lons = []
-        lats = []
-
-        for point in coords:
-            lons.append(point[0])
-            lats.append(point[1])
-
-        fig.add_trace(
-            go.Scattergeo(
-                lon=lons,
-                lat=lats,
-                mode="lines",
-                fill="toself",
-                fillcolor=color,
-                line=dict(
-                    color="black",
-                    width=1
-                ),
-                text=(
-                    f"<b>{district}</b><br>"
-                    f"Wealth Score: {score:.4f}<br>"
-                    f"Rank: {int(rank)}"
-                ),
-                hoverinfo="text",
-                showlegend=False
-            )
+    folium.Marker(
+        location=[
+            centroid.y,
+            centroid.x
+        ],
+        icon=folium.DivIcon(
+            html=f"""
+            <div style="
+                font-size: 9px;
+                font-weight: bold;
+                color: black;
+                text-align: center;
+                white-space: nowrap;
+            ">
+                {row['District']}
+            </div>
+            """
         )
+    ).add_to(m)
 
-    if geometry["type"] == "Polygon":
+# Legend
+legend_html = """
+<div style="
+    position: fixed;
+    bottom: 30px;
+    right: 20px;
+    width: 180px;
+    background-color: white;
+    border: 2px solid grey;
+    z-index: 9999;
+    font-size: 13px;
+    padding: 10px;
+    box-shadow: 0 0 5px rgba(0,0,0,0.3);
+">
+<b>Wealth Index Rank</b><br><br>
 
-        for polygon in geometry["coordinates"]:
-            add_polygon(polygon)
+<span style="color:#006400;">■</span>
+Rank 1–7<br>
 
-    elif geometry["type"] == "MultiPolygon":
+<span style="color:#32CD32;">■</span>
+Rank 8–14<br>
 
-        for multipolygon in geometry["coordinates"]:
-            for polygon in multipolygon:
-                add_polygon(polygon)
+<span style="color:#FFD700;">■</span>
+Rank 15–21<br>
 
-# 6. DISTRICT LABELS
-for feature in geojson["features"]:
+<span style="color:#FFA500;">■</span>
+Rank 22–28<br>
 
-    district = feature["properties"].get("District")
+<span style="color:#DC143C;">■</span>
+Rank 29–34
+</div>
+"""
 
-    row = df[df["District"] == district]
-
-    if row.empty:
-        continue
-
-    rank = row.iloc[0]["rank"]
-    geometry = feature["geometry"]
-
-    # Collect coordinates
-    points = []
-
-    def collect_points(obj):
-        if isinstance(obj, list):
-
-            if (
-                len(obj) >= 2
-                and isinstance(obj[0], (int, float))
-            ):
-                points.append((obj[0], obj[1]))
-
-            else:
-                for item in obj:
-                    collect_points(item)
-
-    collect_points(geometry["coordinates"])
-
-    if points:
-
-        lon = sum(p[0] for p in points) / len(points)
-        lat = sum(p[1] for p in points) / len(points)
-
-        fig.add_trace(
-            go.Scattergeo(
-                lon=[lon],
-                lat=[lat],
-                text=f"<b>{district}</b><br>Rank: {int(rank)}",
-                mode="text",
-                textfont=dict(
-                    size=9,
-                    color="black"
-                ),
-                hoverinfo="text",
-                showlegend=False
-            )
-        )
-
-# 7. MAP SETTINGS
-fig.update_geos(
-    visible=False,
-    projection_type="mercator",
-    showland=True,
-    landcolor="white",
-    showocean=True,
-    oceancolor="white",
-    showcountries=False,
-    showcoastlines=False
+m.get_root().html.add_child(
+    folium.Element(legend_html)
 )
 
-fig.update_layout(
+# Display map
+components.html(
+    m._repr_html_(),
     height=650,
-    margin=dict(
-        r=0,
-        t=5,
-        l=0,
-        b=0
-    ),
-    paper_bgcolor="white",
-    plot_bgcolor="white"
-)
-
-# 8. DISPLAY
-st.plotly_chart(
-    fig,
-    use_container_width=True
+    scrolling=False
 )
