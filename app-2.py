@@ -12,8 +12,19 @@ st.set_page_config(
 st.title("Maharashtra District-wise Wealth Index")
 
 # Load ranking data
+excel_file = "Wealth Index Finall..xlsx"
+
+excel = pd.ExcelFile(excel_file)
+
+if "ranking" not in excel.sheet_names:
+    st.error(
+        f"Sheet 'ranking' not found. "
+        f"Available sheets: {excel.sheet_names}"
+    )
+    st.stop()
+
 df = pd.read_excel(
-    "Wealth Index Finall..xlsx",
+    excel_file,
     sheet_name="ranking"
 )
 
