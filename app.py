@@ -75,7 +75,26 @@ folium.GeoJson(
         labels=True
     )
 ).add_to(m)
+# District names directly on the map
+for _, row in map_data.iterrows():
+    centroid = row.geometry.centroid
 
+    folium.Marker(
+        location=[centroid.y, centroid.x],
+        icon=folium.DivIcon(
+            html=f"""
+            <div style="
+                font-size: 9px;
+                font-weight: bold;
+                color: black;
+                text-align: center;
+                white-space: nowrap;
+            ">
+                {row['District']}
+            </div>
+            """
+        )
+    ).add_to(m)
 # Display map directly as HTML
 components.html(
     m._repr_html_(),
