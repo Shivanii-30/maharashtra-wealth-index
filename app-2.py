@@ -30,7 +30,7 @@ df = pd.read_excel(
 
 # Load Maharashtra GeoJSON
 gdf = gpd.read_file(
-    "Maharashtra_Wealth_Index.geojson"
+    "Maharashtra_Wealth_Index-1.geojson"
 )
 
 # Keep required columns
