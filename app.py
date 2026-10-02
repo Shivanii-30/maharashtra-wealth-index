@@ -176,7 +176,8 @@ fig.update_geos(
     visible=False,
     showcountries=False,
     showcoastlines=False,
-    showland=False
+    showland=True,
+    landcolor="white"
 )
 
 fig.update_layout(
