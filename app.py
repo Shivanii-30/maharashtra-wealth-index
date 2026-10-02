@@ -37,8 +37,17 @@ map_data = gdf.merge(
 m = folium.Map(
     location=[19.75, 75.7],
     zoom_start=6,
-    tiles="OpenStreetMap"
+    tiles="OpenStreetMap",
+    max_bounds=True
 )
+
+# Fit map to Maharashtra boundary
+minx, miny, maxx, maxy = gdf.total_bounds
+
+m.fit_bounds([
+    [miny, minx],
+    [maxy, maxx]
+])
 def get_color(rank):
     if rank <= 7:
         return "#006400"
