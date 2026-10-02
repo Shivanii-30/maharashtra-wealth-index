@@ -12,7 +12,7 @@ st.set_page_config(
 st.title("Maharashtra District-wise Wealth Index")
 
 # Load ranking data
-excel_file = "Wealth Index Finall..xlsx"
+excel_file = "Wealth Index Finall....xlsx"
 
 df = pd.read_excel(
     excel_file,
