@@ -149,42 +149,27 @@ legend_html = """
     box-shadow: 0 0 6px rgba(0,0,0,0.3);
 ">
 
-<b>Wealth Index Rank</b>
+<b>Wealth Index Level</b>
 <br><br>
 
-<span style="
-    color:#006400;
-    font-size:18px;
-">■</span>
-Rank 1–7
+<span style="color:#006400; font-size:18px;">■</span>
+Very High
 <br>
 
-<span style="
-    color:#32CD32;
-    font-size:18px;
-">■</span>
-Rank 8–14
+<span style="color:#32CD32; font-size:18px;">■</span>
+High
 <br>
 
-<span style="
-    color:#FFD700;
-    font-size:18px;
-">■</span>
-Rank 15–21
+<span style="color:#FFD700; font-size:18px;">■</span>
+Medium
 <br>
 
-<span style="
-    color:#FFA500;
-    font-size:18px;
-">■</span>
-Rank 22–28
+<span style="color:#FFA500; font-size:18px;">■</span>
+Low
 <br>
 
-<span style="
-    color:#DC143C;
-    font-size:18px;
-">■</span>
-Rank 29–34
+<span style="color:#DC143C; font-size:18px;">■</span>
+Very Low
 
 </div>
 """
