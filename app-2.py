@@ -14,7 +14,7 @@ st.title("Maharashtra District-wise Wealth Index")
 # Load ranking data
 df = pd.read_excel(
     "Wealth Index Finall..xlsx",
-    sheet_name="ranking "
+    sheet_name="ranking"
 )
 
 # Load Maharashtra GeoJSON
