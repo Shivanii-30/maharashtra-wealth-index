@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import geopandas as gpd
@@ -18,29 +17,26 @@ df = pd.read_excel(
     sheet_name="ranking "
 )
 
-# Load latest map
+# Load Maharashtra GeoJSON
 gdf = gpd.read_file(
     "Maharashtra_Wealth_Index.geojson"
 )
 
-# Keep only required columns
+# Keep required columns
 gdf = gdf[["District", "geometry"]]
 
-# Merge map with ranking data
+# Merge ranking data with map
 map_data = gdf.merge(
     df[["District", "wealth_score", "rank"]],
     on="District",
     how="left"
 )
 
-# Create Maharashtra map
-m = folium.Map(
-    location=[19.75, 75.7],
-    zoom_start=6,
-    tiles="OpenStreetMap"
-)
+# Rank-based colours
 def get_color(rank):
-    if rank <= 7:
+    if pd.isna(rank):
+        return "#D3D3D3"
+    elif rank <= 7:
         return "#006400"
     elif rank <= 14:
         return "#32CD32"
@@ -51,15 +47,36 @@ def get_color(rank):
     else:
         return "#DC143C"
 
-# Add districts
+
+# Create map
+# No OpenStreetMap background
+m = folium.Map(
+    location=[19.75, 75.7],
+    zoom_start=6,
+    tiles=None,
+    control_scale=True
+)
+
+# Fit map exactly to Maharashtra GeoJSON
+minx, miny, maxx, maxy = gdf.total_bounds
+
+m.fit_bounds([
+    [miny, minx],
+    [maxy, maxx]
+])
+
+
+# Add Maharashtra districts
 folium.GeoJson(
     map_data,
-   style_function=lambda feature: {
-    "fillColor": get_color(feature["properties"]["rank"]),
-    "color": "black",
-    "weight": 1,
-    "fillOpacity": 0.7
-},
+    style_function=lambda feature: {
+        "fillColor": get_color(
+            feature["properties"]["rank"]
+        ),
+        "color": "black",
+        "weight": 1,
+        "fillOpacity": 0.75
+    },
     popup=folium.GeoJsonPopup(
         fields=[
             "District",
@@ -73,14 +90,28 @@ folium.GeoJson(
         ],
         localize=True,
         labels=True
-    )
+    ),
+    highlight_function=lambda feature: {
+        "weight": 2,
+        "color": "black",
+        "fillOpacity": 0.85
+    }
 ).add_to(m)
-# District names directly on the map
+
+
+# Add district names
 for _, row in map_data.iterrows():
+
+    if row.geometry is None:
+        continue
+
     centroid = row.geometry.centroid
 
     folium.Marker(
-        location=[centroid.y, centroid.x],
+        location=[
+            centroid.y,
+            centroid.x
+        ],
         icon=folium.DivIcon(
             html=f"""
             <div style="
@@ -89,6 +120,11 @@ for _, row in map_data.iterrows():
                 color: black;
                 text-align: center;
                 white-space: nowrap;
+                text-shadow:
+                    1px 1px 2px white,
+                    -1px -1px 2px white,
+                    1px -1px 2px white,
+                    -1px 1px 2px white;
             ">
                 {row['District']}
             </div>
@@ -96,9 +132,56 @@ for _, row in map_data.iterrows():
         )
     ).add_to(m)
 
-# Display map directly as HTML
+
+# Legend
+legend_html = """
+<div style="
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 175px;
+    background-color: white;
+    border: 2px solid grey;
+    border-radius: 5px;
+    z-index: 9999;
+    font-size: 13px;
+    padding: 10px;
+    box-shadow: 0 0 6px rgba(0,0,0,0.3);
+">
+
+<b>Wealth Index Level</b>
+<br><br>
+
+<span style="color:#006400; font-size:18px;">■</span>
+Very High
+<br>
+
+<span style="color:#32CD32; font-size:18px;">■</span>
+High
+<br>
+
+<span style="color:#FFD700; font-size:18px;">■</span>
+Medium
+<br>
+
+<span style="color:#FFA500; font-size:18px;">■</span>
+Low
+<br>
+
+<span style="color:#DC143C; font-size:18px;">■</span>
+Very Low
+
+</div>
+"""
+
+m.get_root().html.add_child(
+    folium.Element(legend_html)
+)
+
+
+# Display map in Streamlit
 components.html(
     m._repr_html_(),
-    height=650,
+    height=700,
     scrolling=False
 )
