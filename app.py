@@ -40,7 +40,7 @@ map_data = gdf.merge(
 minx, miny, maxx, maxy = map_data.total_bounds
 
 m = folium.Map(
-    tiles="OpenStreetMap",
+    tiles=None,
     zoom_control=True,
     scrollWheelZoom=True
 )
